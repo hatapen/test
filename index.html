@@ -43,7 +43,7 @@
     <div id="betting">
         <label for="betAmount">賭け金: $</label>
         <input type="number" id="betAmount" min="10" value="10">
-        <button onclick="placeBet()">ベットする</button>
+        <button id="placeBetButton">ベットする</button>
     </div>
     <div id="gameArea" style="display:none;">
         <h2>ディーラーの手札</h2>
@@ -51,14 +51,14 @@
         <h2>プレイヤーの手札</h2>
         <div id="playerHand"></div>
         <div id="actions">
-            <button onclick="playerAction('hit')">ヒット</button>
-            <button onclick="playerAction('stand')">スタンド</button>
-            <button onclick="playerAction('double')">ダブル</button>
-            <button onclick="playerAction('split')">スプリット</button>
+            <button id="hitButton">ヒット</button>
+            <button id="standButton">スタンド</button>
+            <button id="doubleButton">ダブル</button>
+            <button id="splitButton">スプリット</button>
         </div>
     </div>
     <div id="result"></div>
-    <button onclick="newGame()" style="display:none;">新しいゲーム</button>
+    <button id="newGameButton" style="display:none;">新しいゲーム</button>
 
     <div id="strategyTables" style="display:none;">
         <h2>ベーシックストラテジー表</h2>
@@ -287,8 +287,11 @@
         // 手札の合計値を計算する関数
         function calculateHandValue(hand) {
             let sum = hand.reduce((total, card) => total + getCardValue(card), 0);
-            const hasAce = hand.some(card => card.value === 'A');
-            if (hasAce && sum > 21) sum -= 10;
+            let aces = hand.filter(card => card.value === 'A').length;
+            while (sum > 21 && aces > 0) {
+                sum -= 10;
+                aces--;
+            }
             return sum;
         }
 
@@ -313,7 +316,7 @@
             document.getElementById('betting').style.display = gameState.currentTurn === 'betting' ? 'block' : 'none';
             document.getElementById('gameArea').style.display = gameState.currentTurn !== 'betting' ? 'block' : 'none';
             document.getElementById('result').textContent = gameState.gameResult || '';
-            document.querySelector('button[onclick="newGame()"]').style.display = gameState.currentTurn === 'end' ? 'block' : 'none';
+            document.getElementById('newGameButton').style.display = gameState.currentTurn === 'end' ? 'block' : 'none';
 
             const dealerHandEl = document.getElementById('dealerHand');
             dealerHandEl.innerHTML = '';
@@ -342,8 +345,8 @@
             actionsEl.style.display = gameState.currentTurn === 'player' ? 'block' : 'none';
             if (gameState.currentTurn === 'player') {
                 const currentHand = gameState.playerHands[gameState.currentHandIndex];
-                document.querySelector('button[onclick="playerAction(\'double\')"]').disabled = !canDouble(currentHand) || gameState.balance < gameState.betAmounts[gameState.currentHandIndex];
-                document.querySelector('button[onclick="playerAction(\'split\')"]').disabled = !canSplit(currentHand) || gameState.balance < gameState.betAmounts[gameState.currentHandIndex];
+                document.getElementById('doubleButton').disabled = !canDouble(currentHand) || gameState.balance < gameState.betAmounts[gameState.currentHandIndex];
+                document.getElementById('splitButton').disabled = !canSplit(currentHand) || gameState.balance < gameState.betAmounts[gameState.currentHandIndex];
             }
 
             if (gameState.currentTurn === 'end') {
@@ -367,14 +370,15 @@
             table.innerHTML = '';
             const headerRow = table.insertRow();
             headerRow.insertCell().textContent = "プレイヤーの手札";
-            ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'A'].forEach(value => {
+            const dealerCards = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'A'];
+            dealerCards.forEach(value => {
                 headerRow.insertCell().textContent = value;
             });
             rows.forEach((row, index) => {
                 const tr = table.insertRow();
                 tr.insertCell().textContent = row;
-                Object.values(strategy).forEach(strategies => {
-                    tr.insertCell().textContent = strategies[index];
+                dealerCards.forEach(dealerCard => {
+                    tr.insertCell().textContent = strategy[dealerCard][index];
                 });
             });
         }
@@ -384,8 +388,17 @@
             initializeGame();
         }
 
-        // ゲームの初期化
-        initializeGame();
+        // イベントリスナーの設定とゲームの初期化
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('hitButton').addEventListener('click', () => playerAction('hit'));
+            document.getElementById('standButton').addEventListener('click', () => playerAction('stand'));
+            document.getElementById('doubleButton').addEventListener('click', () => playerAction('double'));
+            document.getElementById('splitButton').addEventListener('click', () => playerAction('split'));
+            document.getElementById('placeBetButton').addEventListener('click', placeBet);
+            document.getElementById('newGameButton').addEventListener('click', newGame);
+
+            initializeGame();
+        });
     </script>
 </body>
 </html>
